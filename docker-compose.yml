@@ -16,6 +16,7 @@ x-defaults: &defaults
     - postgres
     - memcached
     - smtp
+    - rabbitmq
   env_file: .env
   environment:
     SENTRY_MEMCACHED_HOST: memcached
@@ -53,19 +54,33 @@ services:
       - sentry-postgres:/var/lib/postgresql/data
     networks:
       - sentry
+    environment:
+      POSTGRES_USER: "${SENTRY_DB_USER}"
+      POSTGRES_PASSWORD: "${SENTRY_DB_PASSWORD}"
+      POSTGRES_DB: "${SENTRY_DB_NAME}"
+
+  rabbitmq:
+    restart: unless-stopped
+    image: rabbitmq:3.7-management
+    networks:
+      - sentry
+    environment:
+      RABBITMQ_DEFAULT_USER: "${SENTRY_RABBITMQ_USERNAME}"
+      RABBITMQ_DEFAULT_PASS: "${SENTRY_RABBITMQ_PASSWORD}"
+      RABBITMQ_HIPE_COMPILE: 1
 
   web:
     <<: *defaults
     ports:
       - '9600:9000'
+    networks:
+      - sentry
+      - nginx-proxy
     environment:
       VIRTUAL_HOST: 'bugs.proto.energy'
       VIRTUAL_PORT: 9600
       LETSENCRYPT_HOST: 'bugs.proto.energy'
       LETSENCRYPT_EMAIL: 'domain.admin@proto.energy'
-    networks:
-      - sentry
-      - nginx-proxy
 
   cron:
     <<: *defaults
