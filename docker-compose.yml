@@ -24,31 +24,48 @@ x-defaults: &defaults
     SENTRY_EMAIL_HOST: smtp
   volumes:
     - sentry-data:/var/lib/sentry/files
-
+  networks:
+    - sentry
 
 services:
   smtp:
     restart: unless-stopped
     image: tianon/exim4
+    networks:
+      - sentry
 
   memcached:
     restart: unless-stopped
     image: memcached:1.5-alpine
+    networks:
+      - sentry
 
   redis:
     restart: unless-stopped
     image: redis:3.2-alpine
+    networks:
+      - sentry
 
   postgres:
     restart: unless-stopped
-    image: postgres:9.5
+    image: postgres:9.5-alpine
     volumes:
       - sentry-postgres:/var/lib/postgresql/data
+    networks:
+      - sentry
 
   web:
     <<: *defaults
     ports:
-      - '9000:9000'
+      - '9600:9000'
+    environment:
+      VIRTUAL_HOST: 'bugs.proto.energy'
+      VIRTUAL_PORT: 9600
+      LETSENCRYPT_HOST: 'bugs.proto.energy'
+      LETSENCRYPT_EMAIL: 'domain.admin@proto.energy'
+    networks:
+      - sentry
+      - nginx-proxy
 
   cron:
     <<: *defaults
@@ -58,9 +75,14 @@ services:
     <<: *defaults
     command: run worker
 
+networks:
+  nginx-proxy:
+    external: true
+  sentry:
+    driver: bridge
 
 volumes:
-    sentry-data:
-      external: true
-    sentry-postgres:
-      external: true
+  sentry-data:
+    external: true
+  sentry-postgres:
+    external: true
